@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # Backend Flask API service
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=development
+      - PYTHONUNBUFFERED=1
+      - REDIS_URL=redis://redis:6379/0
+      - TIMESCALEDB_URL=postgres://postgres:postgres@timescaledb:5432/anomaly_detection
+    depends_on:
+      - timescaledb
+      - redis
+
+  # Frontend React service
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - REACT_APP_API_URL=http://localhost:5000
+    depends_on:
+      - backend
+    stdin_open: true
+
+  # TimescaleDB service
+  timescaledb:
+    image: timescale/timescaledb:latest-pg14
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=anomaly_detection
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+
+  # Redis service
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  timescaledb_data:
+  redis_data:
